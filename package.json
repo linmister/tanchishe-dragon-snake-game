@@ -1,0 +1,30 @@
+{
+  "name": "tanchishe-dragon-snake-game",
+  "version": "1.0.0",
+  "description": "A classic snake game with Chinese dragon theme and dynamic food elements",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "npx http-server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "snake",
+    "game",
+    "html5",
+    "css3",
+    "javascript",
+    "chinese",
+    "dragon"
+  ],
+  "author": "linmister",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linmister/tanchishe-dragon-snake-game.git"
+  },
+  "bugs": {
+    "url": "https://github.com/linmister/tanchishe-dragon-snake-game/issues"
+  },
+  "homepage": "https://github.com/linmister/tanchishe-dragon-snake-game#readme"
+}
