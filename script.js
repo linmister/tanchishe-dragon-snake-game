@@ -1,269 +1,275 @@
-// 获取canvas元素和上下文
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// 绘制分数
+function drawScore() {
+    // 分数已经在HTML中显示，这里可以添加额外的视觉效果
+}
 
-// 游戏变量
-let snake = [];
-let food = {};
-let direction = 'right';
-let nextDirection = 'right';
-let score = 0;
-let highScore = localStorage.getItem('snakeHighScore') || 0;
-let gameSpeed = 150;
-let gameRunning = false;
-let gameLoop;
-let lastUpdateTime = 0;
-
-// DOM元素
-const scoreElement = document.getElementById('score');
-const highScoreElement = document.getElementById('high-score');
-const startBtn = document.getElementById('startBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const resetBtn = document.getElementById('resetBtn');
-
-// 初始化游戏
-function initGame() {
-    // 初始化蛇的位置（在画布中心）
-    snake = [
-        {x: 8, y: 10},
-        {x: 7, y: 10},
-        {x: 6, y: 10}
-    ];
+// 更新游戏状态
+function updateGame() {
+    if (!gameRunning) return;
     
-    // 生成食物
-    generateFood();
+    // 更新方向
+    direction = nextDirection;
     
-    // 重置游戏状态
-    direction = 'right';
-    nextDirection = 'right';
-    score = 0;
-    gameSpeed = 150;
-    gameRunning = false;
+    // 计算新的蛇头位置
+    const head = {x: snake[0].x, y: snake[0].y};
     
-    // 更新分数显示
-    scoreElement.textContent = score;
-    highScoreElement.textContent = highScore;
+    switch(direction) {
+        case 'up':
+            head.y -= 1;
+            break;
+        case 'down':
+            head.y += 1;
+            break;
+        case 'left':
+            head.x -= 1;
+            break;
+        case 'right':
+            head.x += 1;
+            break;
+    }
     
-    // 隐藏游戏结束和暂停界面
-    const gameOverElement = document.querySelector('.game-over');
-    const pauseIndicator = document.querySelector('.pause-indicator');
-    if (gameOverElement) gameOverElement.remove();
-    if (pauseIndicator) pauseIndicator.remove();
+    // 检查是否撞墙
+    if (head.x < 0 || head.x >= 20 || head.y < 0 || head.y >= 20) {
+        gameOver();
+        return;
+    }
     
-    // 绘制初始游戏状态
+    // 检查是否撞到自己
+    for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === head.x && snake[i].y === head.y) {
+            gameOver();
+            return;
+        }
+    }
+    
+    // 将新头部添加到蛇身上
+    snake.unshift(head);
+    
+    // 检查是否吃到食物
+    if (head.x === food.x && head.y === food.y) {
+        // 增加分数
+        score += 10;
+        scoreElement.textContent = score;
+        
+        // 每吃5个食物增加速度
+        if (score % 50 === 0 && gameSpeed > 50) {
+            gameSpeed -= 10;
+        }
+        
+        // 生成新食物
+        generateFood();
+    } else {
+        // 移除尾部（如果没有吃到食物）
+        snake.pop();
+    }
+    
+    // 重绘游戏
     drawGame();
 }
 
-// 生成食物
-function generateFood() {
-    // 创建一个不在蛇身上的随机位置
-    let newFood;
-    let foodOnSnake;
+// 游戏结束
+function gameOver() {
+    gameRunning = false;
+    clearInterval(gameLoop);
     
-    do {
-        foodOnSnake = false;
-        newFood = {
-            x: Math.floor(Math.random() * 20),
-            y: Math.floor(Math.random() * 20),
-            type: Math.floor(Math.random() * 3) // 0, 1, 或 2 对应三种不同的食物
-        };
+    // 更新最高分
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('snakeHighScore', highScore);
+        highScoreElement.textContent = highScore;
+    }
+    
+    // 显示游戏结束界面
+    const gameOverElement = document.createElement('div');
+    gameOverElement.className = 'game-over';
+    gameOverElement.innerHTML = `
+        <h2>游戏结束</h2>
+        <p>最终得分: ${score}</p>
+        <p>最高分: ${highScore}</p>
+        <button class="restart-btn" onclick="resetGame()">重新开始</button>
+    `;
+    document.querySelector('.game-container').appendChild(gameOverElement);
+}
+
+// 开始游戏
+function startGame() {
+    if (!gameRunning) {
+        gameRunning = true;
+        gameLoop = setInterval(updateGame, gameSpeed);
         
-        // 检查食物是否在蛇身上
-        for (let segment of snake) {
-            if (segment.x === newFood.x && segment.y === newFood.y) {
-                foodOnSnake = true;
-                break;
+        // 移除暂停指示器（如果存在）
+        const pauseIndicator = document.querySelector('.pause-indicator');
+        if (pauseIndicator) pauseIndicator.remove();
+    }
+}
+
+// 暂停游戏
+function pauseGame() {
+    gameRunning = !gameRunning;
+    
+    if (gameRunning) {
+        gameLoop = setInterval(updateGame, gameSpeed);
+        // 移除暂停指示器
+        const pauseIndicator = document.querySelector('.pause-indicator');
+        if (pauseIndicator) pauseIndicator.remove();
+    } else {
+        clearInterval(gameLoop);
+        // 显示暂停指示器
+        const pauseIndicator = document.createElement('div');
+        pauseIndicator.className = 'pause-indicator';
+        pauseIndicator.textContent = '游戏暂停';
+        document.querySelector('.game-container').appendChild(pauseIndicator);
+    }
+}
+
+// 重置游戏
+function resetGame() {
+    clearInterval(gameLoop);
+    initGame();
+}
+
+// 处理键盘输入
+function handleKeyPress(event) {
+    switch(event.key) {
+        case 'ArrowUp':
+            if (direction !== 'down') nextDirection = 'up';
+            break;
+        case 'ArrowDown':
+            if (direction !== 'up') nextDirection = 'down';
+            break;
+        case 'ArrowLeft':
+            if (direction !== 'right') nextDirection = 'left';
+            break;
+        case 'ArrowRight':
+            if (direction !== 'left') nextDirection = 'right';
+            break;
+        case ' ':
+        case 'p':
+        case 'P':
+            pauseGame();
+            break;
+    }
+}
+
+// 事件监听器
+startBtn.addEventListener('click', startGame);
+pauseBtn.addEventListener('click', pauseGame);
+resetBtn.addEventListener('click', resetGame);
+document.addEventListener('keydown', handleKeyPress);
+
+// 初始化游戏
+initGame();
+
+// 龙头绘制函数
+function drawDragonHead(x, y) {
+    // 创建canvas来绘制龙头
+    const headCanvas = document.createElement('canvas');
+    headCanvas.width = 20;
+    headCanvas.height = 20;
+    const headCtx = headCanvas.getContext('2d');
+    
+    // 绘制龙头主体（金色）
+    const gradient = headCtx.createLinearGradient(0, 0, 20, 20);
+    gradient.addColorStop(0, '#FFD700'); // 金色
+    gradient.addColorStop(1, '#FF8C00'); // 深橙色
+    
+    headCtx.fillStyle = gradient;
+    headCtx.beginPath();
+    headCtx.ellipse(10, 10, 8, 6, 0, 0, Math.PI * 2);
+    headCtx.fill();
+    
+    // 绘制龙眼
+    headCtx.fillStyle = '#000';
+    headCtx.beginPath();
+    headCtx.arc(13, 8, 2, 0, Math.PI * 2);
+    headCtx.fill();
+    
+    headCtx.fillStyle = '#FFF';
+    headCtx.beginPath();
+    headCtx.arc(13.5, 7.5, 0.5, 0, Math.PI * 2);
+    headCtx.fill();
+    
+    // 绘制龙嘴
+    headCtx.strokeStyle = '#8B4513';
+    headCtx.lineWidth = 1;
+    headCtx.beginPath();
+    headCtx.arc(10, 12, 3, 0, Math.PI);
+    headCtx.stroke();
+    
+    // 将绘制好的龙头画到游戏画布上
+    ctx.drawImage(headCanvas, x, y);
+}
+
+// 龙身绘制函数
+function drawDragonBody(x, y) {
+    // 创建canvas来绘制龙身
+    const bodyCanvas = document.createElement('canvas');
+    bodyCanvas.width = 20;
+    bodyCanvas.height = 20;
+    const bodyCtx = bodyCanvas.getContext('2d');
+    
+    // 绘制龙身主体（从金色渐变到绿色）
+    const gradient = bodyCtx.createLinearGradient(0, 0, 20, 20);
+    gradient.addColorStop(0, '#FFD700'); // 金色
+    gradient.addColorStop(0.5, '#9ACD32'); // 黄绿色
+    gradient.addColorStop(1, '#32CD32'); // 草绿色
+    
+    bodyCtx.fillStyle = gradient;
+    bodyCtx.fillRect(2, 2, 16, 16);
+    
+    // 绘制龙鳞纹理
+    bodyCtx.fillStyle = 'rgba(0, 100, 0, 0.3)';
+    for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+            if ((i + j) % 2 === 0) {
+                bodyCtx.beginPath();
+                bodyCtx.ellipse(4 + i * 4, 4 + j * 4, 1.5, 1.5, 0, 0, Math.PI * 2);
+                bodyCtx.fill();
             }
         }
-    } while (foodOnSnake);
-    
-    food = newFood;
-}
-
-// 绘制游戏
-function drawGame() {
-    // 清空画布
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 绘制中国风背景装饰
-    drawChineseStyleBackground();
-    
-    // 绘制网格线（可选）
-    drawGrid();
-    
-    // 绘制食物
-    drawFood();
-    
-    // 绘制蛇
-    drawDragonSnake();
-    
-    // 绘制分数
-    drawScore();
-}
-
-// 绘制中国风背景装饰
-function drawChineseStyleBackground() {
-    // 绘制云纹图案
-    drawCloudPattern();
-    
-    // 绘制梅花图案
-    drawPlumBlossom();
-}
-
-// 绘制云纹图案
-function drawCloudPattern() {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    
-    // 绘制几个云朵形状
-    const clouds = [
-        {x: 50, y: 50, size: 30},
-        {x: 300, y: 80, size: 40},
-        {x: 150, y: 350, size: 35},
-        {x: 350, y: 300, size: 25}
-    ];
-    
-    for (let cloud of clouds) {
-        ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size * 0.8, cloud.y - cloud.size * 0.2, cloud.size * 0.6, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size * 1.6, cloud.y, cloud.size * 0.8, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.size * 1.2, cloud.y + cloud.size * 0.3, cloud.size * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-// 绘制梅花图案
-function drawPlumBlossom() {
-    ctx.fillStyle = 'rgba(255, 182, 193, 0.1)';
-    
-    // 绘制几朵梅花
-    const blossoms = [
-        {x: 100, y: 100},
-        {x: 320, y: 200},
-        {x: 200, y: 380}
-    ];
-    
-    for (let blossom of blossoms) {
-        drawSingleBlossom(blossom.x, blossom.y);
-    }
-}
-
-// 绘制单朵梅花
-function drawSingleBlossom(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    
-    // 绘制五瓣花
-    for (let i = 0; i < 5; i++) {
-        ctx.rotate(Math.PI * 2 / 5);
-        ctx.beginPath();
-        ctx.ellipse(0, -8, 6, 12, 0, 0, Math.PI * 2);
-        ctx.fill();
     }
     
-    // 绘制花心
-    ctx.beginPath();
-    ctx.arc(0, 0, 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
-    ctx.fill();
-    
-    ctx.restore();
+    // 将绘制好的龙身画到游戏画布上
+    ctx.drawImage(bodyCanvas, x, y);
 }
 
-// 绘制网格线
-function drawGrid() {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 0.5;
-    
-    // 绘制垂直线
-    for (let x = 0; x <= canvas.width; x += 20) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-    
-    // 绘制水平线
-    for (let y = 0; y <= canvas.height; y += 20) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-}
-
-// 绘制食物
-function drawFood() {
-    const foodX = food.x * 20;
-    const foodY = food.y * 20;
-    
-    // 根据食物类型绘制不同的食物
-    switch(food.type) {
-        case 0: // 国风果子
-            drawChineseFruit(foodX, foodY);
-            break;
-        case 1: // 蟠桃
-            drawPeach(foodX, foodY);
-            break;
-        case 2: // 寿桃
-            drawLongevityPeach(foodX, foodY);
-            break;
-    }
-}
-
-// 绘制国风果子
-function drawChineseFruit(x, y) {
-    // 使用images.js中创建的图像
-    const fruitImage = getFoodImage('fruit');
-    ctx.drawImage(fruitImage, x, y, 20, 20);
-}
-
-// 绘制蟠桃
-function drawPeach(x, y) {
-    const peachImage = getFoodImage('peach');
-    ctx.drawImage(peachImage, x, y, 20, 20);
-}
-
-// 绘制寿桃
-function drawLongevityPeach(x, y) {
-    const longevityPeachImage = getFoodImage('longevityPeach');
-    ctx.drawImage(longevityPeachImage, x, y, 20, 20);
-}
-
-// 绘制龙形蛇
-function drawDragonSnake() {
-    for (let i = 0; i < snake.length; i++) {
-        const segment = snake[i];
-        const x = segment.x * 20;
-        const y = segment.y * 20;
-        
-        if (i === 0) {
-            // 绘制龙头
-            drawDragonHead(x, y);
-        } else if (i === snake.length - 1) {
-            // 绘制龙尾
-            drawDragonTail(x, y);
-        } else {
-            // 绘制龙身
-            drawDragonBody(x, y);
-        }
-    }
-}
-
-// 绘制龙头
-function drawDragonHead(x, y) {
-    const headImage = getSnakeImage('head');
-    ctx.drawImage(headImage, x, y, 20, 20);
-}
-
-// 绘制龙身
-function drawDragonBody(x, y) {
-    const bodyImage = getSnakeImage('body');
-    ctx.drawImage(bodyImage, x, y, 20, 20);
-}
-
-// 绘制龙尾
+// 龙尾绘制函数
 function drawDragonTail(x, y) {
-    const tailImage = getSnakeImage('tail');
-    ctx.drawImage(tailImage, x, y, 20, 20);
+    // 创建canvas来绘制龙尾
+    const tailCanvas = document.createElement('canvas');
+    tailCanvas.width = 20;
+    tailCanvas.height = 20;
+    const tailCtx = tailCanvas.getContext('2d');
+    
+    // 绘制龙尾主体（深绿色）
+    const gradient = tailCtx.createLinearGradient(0, 0, 20, 20);
+    gradient.addColorStop(0, '#32CD32'); // 草绿色
+    gradient.addColorStop(1, '#006400'); // 深绿色
+    
+    tailCtx.fillStyle = gradient;
+    tailCtx.beginPath();
+    tailCtx.moveTo(2, 10);
+    tailCtx.lineTo(18, 2);
+    tailCtx.lineTo(18, 18);
+    tailCtx.closePath();
+    tailCtx.fill();
+    
+    // 绘制尾鳍装饰
+    tailCtx.fillStyle = 'rgba(0, 100, 0, 0.5)';
+    tailCtx.beginPath();
+    tailCtx.moveTo(18, 2);
+    tailCtx.lineTo(15, 0);
+    tailCtx.lineTo(15, 4);
+    tailCtx.closePath();
+    tailCtx.fill();
+    
+    tailCtx.beginPath();
+    tailCtx.moveTo(18, 18);
+    tailCtx.lineTo(15, 16);
+    tailCtx.lineTo(15, 20);
+    tailCtx.closePath();
+    tailCtx.fill();
+    
+    // 将绘制好的龙尾画到游戏画布上
+    ctx.drawImage(tailCanvas, x, y);
 }
