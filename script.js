@@ -1,3 +1,188 @@
+// 获取游戏元素
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const resetBtn = document.getElementById('resetBtn');
+const scoreElement = document.getElementById('score');
+const highScoreElement = document.getElementById('high-score');
+
+// 游戏变量
+let snake = [];
+let food = {};
+let direction = 'right';
+let nextDirection = 'right';
+let gameRunning = false;
+let gameLoop;
+let score = 0;
+let highScore = localStorage.getItem('snakeHighScore') || 0;
+let gameSpeed = 150; // 初始游戏速度（毫秒）
+let gridSize = 20; // 网格大小
+let cellSize = canvas.width / gridSize; // 单元格大小
+
+// 初始化游戏
+function initGame() {
+    // 清除游戏结束界面（如果存在）
+    const gameOverElement = document.querySelector('.game-over');
+    if (gameOverElement) gameOverElement.remove();
+    
+    // 初始化蛇
+    snake = [
+        {x: 10, y: 10},
+        {x: 9, y: 10},
+        {x: 8, y: 10}
+    ];
+    
+    // 初始化方向
+    direction = 'right';
+    nextDirection = 'right';
+    
+    // 初始化分数
+    score = 0;
+    scoreElement.textContent = score;
+    highScoreElement.textContent = highScore;
+    
+    // 初始化游戏状态
+    gameRunning = false;
+    gameSpeed = 150;
+    
+    // 生成食物
+    generateFood();
+    
+    // 绘制游戏
+    drawGame();
+}
+
+// 生成食物
+function generateFood() {
+    // 随机生成食物位置
+    let validPosition = false;
+    while (!validPosition) {
+        food = {
+            x: Math.floor(Math.random() * gridSize),
+            y: Math.floor(Math.random() * gridSize)
+        };
+        
+        // 确保食物不会生成在蛇身上
+        validPosition = true;
+        for (let i = 0; i < snake.length; i++) {
+            if (snake[i].x === food.x && snake[i].y === food.y) {
+                validPosition = false;
+                break;
+            }
+        }
+    }
+}
+
+// 绘制游戏
+function drawGame() {
+    // 清空画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 绘制地图背景
+    drawMap();
+    
+    // 绘制蛇
+    drawSnake();
+    
+    // 绘制食物
+    drawFood();
+    
+    // 绘制分数
+    drawScore();
+}
+
+// 绘制地图
+function drawMap() {
+    // 绘制网格背景
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 绘制网格线
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 0.5;
+    
+    // 绘制垂直线
+    for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, canvas.height);
+        ctx.stroke();
+    }
+    
+    // 绘制水平线
+    for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * cellSize);
+        ctx.lineTo(canvas.width, i * cellSize);
+        ctx.stroke();
+    }
+    
+    // 绘制边框
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+}
+
+// 绘制蛇
+function drawSnake() {
+    for (let i = 0; i < snake.length; i++) {
+        const x = snake[i].x * cellSize;
+        const y = snake[i].y * cellSize;
+        
+        if (i === 0) {
+            // 绘制蛇头
+            drawDragonHead(x, y);
+        } else if (i === snake.length - 1) {
+            // 绘制蛇尾
+            drawDragonTail(x, y);
+        } else {
+            // 绘制蛇身
+            drawDragonBody(x, y);
+        }
+    }
+}
+
+// 绘制食物
+function drawFood() {
+    const x = food.x * cellSize;
+    const y = food.y * cellSize;
+    
+    // 创建canvas来绘制食物
+    const foodCanvas = document.createElement('canvas');
+    foodCanvas.width = cellSize;
+    foodCanvas.height = cellSize;
+    const foodCtx = foodCanvas.getContext('2d');
+    
+    // 绘制食物（红色果实）
+    const gradient = foodCtx.createRadialGradient(
+        cellSize/2, cellSize/2, 1,
+        cellSize/2, cellSize/2, cellSize/2 - 2
+    );
+    gradient.addColorStop(0, '#ff5555');
+    gradient.addColorStop(1, '#cc0000');
+    
+    foodCtx.fillStyle = gradient;
+    foodCtx.beginPath();
+    foodCtx.arc(cellSize/2, cellSize/2, cellSize/2 - 2, 0, Math.PI * 2);
+    foodCtx.fill();
+    
+    // 绘制高光
+    foodCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    foodCtx.beginPath();
+    foodCtx.arc(cellSize/3, cellSize/3, cellSize/6, 0, Math.PI * 2);
+    foodCtx.fill();
+    
+    // 绘制叶子
+    foodCtx.fillStyle = '#00aa00';
+    foodCtx.beginPath();
+    foodCtx.ellipse(cellSize/2, 3, cellSize/4, cellSize/8, 0, 0, Math.PI * 2);
+    foodCtx.fill();
+    
+    // 将绘制好的食物画到游戏画布上
+    ctx.drawImage(foodCanvas, x, y);
+}
+
 // 绘制分数
 function drawScore() {
     // 分数已经在HTML中显示，这里可以添加额外的视觉效果
